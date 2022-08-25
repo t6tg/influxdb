@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -13,8 +14,12 @@ import (
 )
 
 func main() {
-	csv := readCsvFile("data.csv")
-	client := influxdb2.NewClient("http://localhost:8086", "AoYJomd8FtlAfG1jUE_h0TRxabhRa15HlZcgzEoHFK-CPgtszef9fgRjxlMHWbXXPDDBCoQSdA0IhQ6qoLW-OQ==")
+	file := flag.String("file", "", "enter file")
+	url := flag.String("url", "", "enter url")
+	token := flag.String("token", "", "enter token")
+	flag.Parse()
+	csv := readCsvFile(*file)
+	client := influxdb2.NewClient(*url, *token)
 	defer client.Close()
 	for _, v := range csv {
 		v[8] = strings.ReplaceAll(v[8], " ", "T")
@@ -24,11 +29,7 @@ func main() {
 			fmt.Println(err)
 			return
 		}
-		novel_id, err := strconv.Atoi(v[2])
-		if err != nil {
-			return
-		}
-		buyer_id, err := strconv.Atoi(v[1])
+		price, err := strconv.ParseFloat(v[7], 64)
 		if err != nil {
 			return
 		}
@@ -36,8 +37,9 @@ func main() {
 		if err != nil {
 			return
 		}
-		writeAPI := client.WriteAPI("dek_d", "writer_transaction")
-		p := influxdb2.NewPointWithMeasurement("transaction_6").AddField("novel_id", novel_id).AddField("buyer_id", buyer_id).AddField("coin", coin).SetTime(dt).AddTag("novel_id", v[2])
+		writeAPI := client.WriteAPI("dekd", "wallet")
+		p := influxdb2.NewPointWithMeasurement("novel_transaction").AddField("coin", coin).AddField("price", price).AddTag("novel_id", v[2]).AddTag("owner_id", v[5]).AddTag("product_type", v[3]).SetTime(dt)
+		fmt.Println("datetime :", dt)
 		writeAPI.WritePoint(p)
 		writeAPI.Flush()
 	}
